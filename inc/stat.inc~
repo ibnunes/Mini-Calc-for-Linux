@@ -1,0 +1,272 @@
+procedure stat_1var;
+const
+   KEY_STAT_SELECT = #13;
+   KEY_STAT_EXIT   = #27;
+   SEPPOS = 30;
+   Y = 2;
+
+var
+   opt : char = #0;
+   ind : LongInt = 0;
+   id  : string = '';
+   elems : TListElements;
+   k : TKurtosis;
+   i : word;
+
+begin
+   clrscr;
+   WriteXY(2, 2, '  Select a list:', 15);
+   DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+   
+   if listmgr.ListCount = 0 then begin
+      WriteXY(2, 3, '(Enter to go back)', 8);
+      WriteXY(2, 5, 'No lists.');
+      Pause;
+   end else begin
+      WriteXY(2, 3, '(Esc to go back)', 8);
+      repeat
+         opt := memory.ShowListsInfo(2, 5, 15, listmgr, ind, [KEY_STAT_SELECT], false, false);
+         
+         if opt <> KEY_STAT_EXIT then begin
+            DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+            for i := 0 to 20 do begin
+               GotoXY(SEPPOS+2, Y+i);
+               clreol;
+            end;
+            
+            id := listmgr.Lists[ind].id;
+            ExtractElements(listmgr, id, elems);
+            
+            momentskewkurtosis(elems, k.m1, k.m2, k.m3, k.m4, k.skew, k.kurtosis);
+            
+            (* CUMSUM (and others?) *)
+            
+            SetVar('n', Length(elems));
+            SetVar('min', minvalue(elems));
+            SetVar('max', maxvalue(elems));
+            SetVar('sum', sum(elems));
+            SetVar('sumsqr', sumofsquares(elems));
+            SetVar('mean', mean(elems));
+            SetVar('variance', variance(elems));
+            SetVar('popvariance', popnvariance(elems));
+            SetVar('stddev', stddev(elems));
+            SetVar('popstddev', popnstddev(elems));
+            SetVar('m1', k.m1);
+            SetVar('m2', k.m2);
+            SetVar('m3', k.m3);
+            SetVar('m4', k.m4);
+            SetVar('skew', k.skew);
+            SetVar('kurtosis', k.kurtosis);
+            
+            WriteXY(SEPPOS+2, Y+ 0, ' 1-VAR STAT of list ' + id + ' ', 0, 7);
+            WriteXY(SEPPOS+2, Y+ 2, '          n = ' + Real2Str(GetVar('n')));
+            WriteXY(SEPPOS+2, Y+ 3, '        min = ' + Real2Str(GetVar('min')));
+            WriteXY(SEPPOS+2, Y+ 4, '        max = ' + Real2Str(GetVar('max')));
+            WriteXY(SEPPOS+2, Y+ 5, '        sum = ' + Real2Str(GetVar('sum')));
+            WriteXY(SEPPOS+2, Y+ 6, '     sumsqr = ' + Real2Str(GetVar('sumsqr')));
+            WriteXY(SEPPOS+2, Y+ 7, '       mean = ' + Real2Str(GetVar('mean')));
+            WriteXY(SEPPOS+2, Y+ 8, '   variance = ' + Real2Str(GetVar('variance')));
+            WriteXY(SEPPOS+2, Y+ 9, 'popvariance = ' + Real2Str(GetVar('popvariance')));
+            WriteXY(SEPPOS+2, Y+10, '     stddev = ' + Real2Str(GetVar('stddev')));
+            WriteXY(SEPPOS+2, Y+11, '  popstddev = ' + Real2Str(GetVar('popstddev')));
+            WriteXY(SEPPOS+2, Y+13, '    KURTOSIS:', 15);
+            WriteXY(SEPPOS+2, Y+14, '         m1 = ' + Real2Str(k.m1));
+            WriteXY(SEPPOS+2, Y+15, '         m2 = ' + Real2Str(k.m2));
+            WriteXY(SEPPOS+2, Y+16, '         m3 = ' + Real2Str(k.m3));
+            WriteXY(SEPPOS+2, Y+17, '         m4 = ' + Real2Str(k.m4));
+            WriteXY(SEPPOS+2, Y+18, '       skew = ' + Real2Str(k.skew));
+            WriteXY(SEPPOS+2, Y+19, '   kurtosis = ' + Real2Str(k.kurtosis));
+            
+         end;
+      until opt = KEY_STAT_EXIT;
+   end;
+end;
+
+
+procedure stat_2var;
+const
+   KEY_STAT_SELECT = #13;
+   KEY_STAT_EXIT   = #27;
+   SEPPOS = 30;
+   Y = 2;
+
+var
+   opt : char = #0;
+   ind_xi : LongInt = 0;
+   ind_fi : LongInt = 0;
+   id_xi  : string = '';
+   id_fi  : string = '';
+   
+   xi : TListElements;
+   fi : TListElements;
+   xifi : TListElements;
+   fac, fri, frac : TListElements;
+   
+   // k : TKurtosis;
+
+begin
+   clrscr;
+   
+   if listmgr.ListCount < 2 then begin
+      WriteXY(2, 2, 'There are not sufficient lists.');
+      Pause;
+   end else begin
+      DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+      WriteXY(2, 2, '   Select Xi list:', 15);
+      WriteXY(2, 3, '(Enter to go back)', 8);
+      opt := memory.ShowListsInfo(2, 4, 12, listmgr, ind_xi, [KEY_STAT_SELECT], false);
+      
+      if opt = KEY_STAT_EXIT then
+         Exit
+      else begin
+         DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+         id_xi := listmgr.Lists[ind_xi].id;
+         WriteXY(2, 3, '                  ');
+         WriteXY(2, 4, id_xi + ' selected');
+      end;
+      
+      WriteXY(2, 6, '   Select Fi list:', 15);
+      WriteXY(2, 7, '(Enter to go back)', 8);
+      repeat
+         opt := memory.ShowListsInfo(2, 8, 12, listmgr, ind_fi, [KEY_STAT_SELECT], false);
+         if ind_fi = ind_xi then begin
+            DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+            WriteXY(SEPPOS+2, 2, 'That''s the same list as xi! ', 14);
+            Pause(' (Press enter)');
+            GotoXY(SEPPOS+2, 2);
+            clreol;
+         end;
+      until (ind_fi <> ind_xi);
+      
+      if opt = KEY_STAT_EXIT then
+         Exit
+      else begin
+         DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+         WriteXY(2, 7, '                  ');
+         id_fi := listmgr.Lists[ind_fi].id;
+         WriteXY(2, 8, id_fi + ' selected');
+      end;
+      
+      if (listmgr[id_fi].count <> listmgr[id_xi].count) then begin
+         WriteError(SEPPOS+2, 2, 'Dimension mismatch.');
+      end;
+      
+      (* Xi * Fi -> create new list
+         Analyse the resulting list *)
+      
+      ExtractElements(listmgr, id_xi, xi);
+      ExtractElements(listmgr, id_fi, fi);
+      
+      xifi := xi * fi;
+      fri := fi / sum(fi);
+      CumSum(fi, fac);
+      CumSum(fri, frac);
+      
+      AddToManager(listmgr, id_xi + '_fri', fri);
+      AddToManager(listmgr, id_xi + '_fac', fac);
+      AddToManager(listmgr, id_xi + '_frac', frac);
+      AddToManager(listmgr, id_xi + '_xifi', xifi);
+      
+      WriteXY(SEPPOS+2, Y+ 0, ' 2-VAR STAT of lists ' + id_xi + ' and ' + id_fi, 0, 7);
+      
+      WriteXY(SEPPOS+2, Y+ 2, 'The following lists were created:');
+      WriteXY(SEPPOS+4, Y+ 3, id_xi + '_fri'  + ' > Fri,  Relative frequency');
+      WriteXY(SEPPOS+4, Y+ 4, id_xi + '_fac'  + ' > Fac,  Cumulative frequency');
+      WriteXY(SEPPOS+4, Y+ 5, id_xi + '_frac' + ' > Frac, Cumulative Fri');
+      WriteXY(SEPPOS+4, Y+ 6, id_xi + '_xifi' + ' > XiFi, Xi multiplied by Fi');
+      
+      WriteXY(SEPPOS+4, Y+ 8, ' GENERAL INFO:', 15);
+      WriteXY(SEPPOS+2, Y+ 9, '  mean = ' + Real2Str(mean2(xi, fi)));
+      WriteXY(SEPPOS+2, Y+10, 'stddev = ' + Real2Str(stddev2(xi, fi)));
+      
+      Pause('Press ESC to go back...', [OPTION_EXIT]);
+   end;
+end;
+
+
+procedure stat_linreg;
+const
+   KEY_STAT_SELECT = #13;
+   KEY_STAT_EXIT   = #27;
+   SEPPOS = 30;
+   Y = 2;
+
+var
+   opt : char = #0;
+   ind_x : LongInt = 0;
+   ind_y : LongInt = 0;
+   id_x  : string = '';
+   id_y  : string = '';
+   elems_x, elems_y : TListElements;
+   reg : TLinReg;
+
+begin
+   clrscr;
+   
+   if listmgr.ListCount < 2 then begin
+      WriteXY(2, 2, 'There are not sufficient lists.');
+      Pause;
+   end else begin
+      DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+      WriteXY(2, 2, '  Select x list:', 15);
+      WriteXY(2, 3, '(Esc to go back)', 8);
+      opt := memory.ShowListsInfo(2, 4, 12, listmgr, ind_x, [KEY_STAT_SELECT], false);
+      
+      if opt = KEY_STAT_EXIT then
+         Exit
+      else begin
+         DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+         WriteXY(2, 3, '                  ');
+         id_x := listmgr.Lists[ind_x].id;
+         WriteXY(2, 4, id_x + ' selected');
+      end;
+      
+      WriteXY(2, 6, '  Select y list:', 15);
+      WriteXY(2, 7, '(Esc to go back)', 8);
+      repeat
+         opt := memory.ShowListsInfo(2, 8, 12, listmgr, ind_y, [KEY_STAT_SELECT], false);
+         if ind_y = ind_x then begin
+            DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+            WriteXY(SEPPOS+2, 2, 'That''s the same list as x! ', 14);
+            Pause(' (Press enter)');
+            GotoXY(SEPPOS+2, 2);
+            clreol;
+         end;
+      until (ind_x <> ind_y);
+      
+      if opt = KEY_STAT_EXIT then
+         Exit
+      else begin
+         DrawSeparator(SEPPOS, 1, SCREENHEIGHT-3);
+         WriteXY(2, 7, '                  ');
+         id_y := listmgr.Lists[ind_y].id;
+         WriteXY(2, 8, id_y + ' selected');
+      end;
+      
+      if (listmgr[id_y].count <> listmgr[id_x].count) then begin
+         WriteError(SEPPOS+2, 2, 'Dimension mismatch.');
+      end;
+      
+      ExtractElements(listmgr, id_x, elems_x);
+      ExtractElements(listmgr, id_y, elems_y);
+      
+      SimpleLinearRegression(elems_x, elems_y, reg);
+      
+      SetVar('a', reg.a);
+      SetVar('b', reg.b);
+      SetVar('r', reg.r);
+      SetVar('r2', reg.r2);
+      
+      WriteXY(SEPPOS+2, Y+ 0, ' LINEAR REGRESSION (ax+b) ', 0, 7);
+      WriteXY(SEPPOS+2, Y+ 2, ' a = ' + Real2Str(reg.a));
+      WriteXY(SEPPOS+2, Y+ 3, ' b = ' + Real2Str(reg.b));
+      WriteXY(SEPPOS+2, Y+ 4, ' r = ' + Real2Str(reg.r));
+      WriteXY(SEPPOS+2, Y+ 5, 'r2 = ' + Real2Str(reg.r2));
+      WriteXY(SEPPOS+2, Y+ 7, FormatQuad(0, reg.a, reg.b, false), 11);
+      
+      SetVarStr('regeq', Real2Str(reg.a) + '*x + ' + Real2Str(reg.b));
+      
+      Pause([OPTION_EXIT]);
+   end;
+   
+end;
